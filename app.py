@@ -156,7 +156,18 @@ def all_product():
 
 
 
+#################################################################################3
 
+
+
+
+
+@app.route('/deleteproduk', methods=['GET'])
+def delete_product():
+	tipe = request.form['int_type']
+	delete = mongo.db.product.delete_one({'type': tipe})
+	if delete:
+		return jsonify('Success!')
 
 
 
