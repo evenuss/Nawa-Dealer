@@ -7,6 +7,7 @@ from flask_jwt_extended import (
 from datetime import datetime
 from math import cos, asin, sqrt
 from decimal import *
+import uuid
 
 
 app = Flask(__name__)
@@ -246,9 +247,10 @@ def product_color():
 @app.route('/newproduct', methods=['POST'])
 def insert_newproduct():
 	data = request.form
+	_id = uuid.uuid4()
 	tipe = data['int_type']
 	nl_key = data['int_nlt']
-	id_color = data['id_color']
+	id_color = uuid.uuid4()
 	color_name = data['int_color']
 	photo = data['int_photo']
 	nl_keyc = data['int_nlc']
@@ -256,6 +258,7 @@ def insert_newproduct():
 	price = data['int_price']
 
 	insert = mongo.db.product.insert({
+		'_id': _id,
 		'type': tipe,
 		'nl_key': nl_key,
 		'color':[{
@@ -287,7 +290,7 @@ def add_newcolor():
 	find_type = mongo.db.product.count({'nl_key':tipe})
 	if find_type == 0:
 		return jsonify({'message':'type is None'})
-	id_color = data['id_color']
+	id_color = uuid.uuid4()
 	color_name = data['color_name']
 	photo = data['photo']
 	nl_key = data['nl_key']
@@ -354,14 +357,14 @@ def closest(data, v):
     return min(data, key=lambda p: distance(v['lat'],v['lon'],p['lat'],p['lon']))
 
 
-# @app.route('/getlanlot', methods=['GET'])
-# def getCLosestDealer():
-# 	tempDataList = mongo.db.dealer.find()
+@app.route('/getlanlot', methods=['POST'])
+def getCLosestDealer():
+	tempDataList = mongo.db.dealer.find()
 	
-# 	latw = request.form['int_lat']
-# 	lonn = request.form['int_lon']
-# 	v = {'lat': NumberInt(latw), 'lon': NumberInt(lonn)}
-# 	return closest(tempDataList, v)
+	lat = request.form['int_lat']
+	lon = request.form['int_lon']
+	v = {'lat': lat, 'lon': lon }
+	return closest(tempDataList, v)
 
 
 #################################################################################3
@@ -379,3 +382,24 @@ if __name__ == '__main__':
 	app.run(debug=True)
 
 
+
+
+# NOTES :
+
+
+'''
+	Progress :
+
+
+	Import Excel		=> 25%
+	
+
+	latlong				=> 75%
+
+
+	CRUD Master			=> 65%
+
+
+	Order				=> 85%
+
+'''
