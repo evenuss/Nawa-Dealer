@@ -40,6 +40,15 @@ class ProductSchema(ma.Schema):
 product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 
+class DealerSchema(ma.Schema):
+    class Meta:
+        # Fields to expose
+        fields = ('lat','lon')
+
+
+dealer_schema = DealerSchema()
+dealers_schema = DealerSchema(many=True)
+
 # master data produk,color,type, CRUD, import excel, validasi JK pria/wanita, nambah response return + model users , update stock, semua ID pake UUID versi 4,get produckt by UUID, JWT jangan di Params (di header),  #
 
 
@@ -356,15 +365,26 @@ def distance(lat1, lon1, lat2, lon2):
 def closest(data, v):
     return min(data, key=lambda p: distance(v['lat'],v['lon'],p['lat'],p['lon']))
 
+@app.route('/getlatlon', methods=['POST'])
+def gelLatLong():
+	form = request.form
+	lat = float(form['lat'])
+	lon = float(form['lon'])
 
-@app.route('/getlanlot', methods=['POST'])
-def getCLosestDealer():
 	tempDataList = mongo.db.dealer.find()
-	
-	lat = request.form['int_lat']
-	lon = request.form['int_lon']
-	v = {'lat': lat, 'lon': lon }
-	return closest(tempDataList, v)
+
+	v = {'lat': lat, 'lon': lon}
+	return dealer_schema.jsonify(closest(tempDataList, v))
+
+#################################################################################3
+
+
+# @app.route('/', methods=['POST'])
+# def addNew
+
+
+
+
 
 
 #################################################################################3
@@ -379,7 +399,7 @@ def not_found(error=None):
 
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run(debug=True, port="5500")
 
 
 
