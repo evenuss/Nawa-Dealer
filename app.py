@@ -7,8 +7,11 @@ from flask_jwt_extended import (
 from datetime import datetime
 from math import cos, asin, sqrt
 from decimal import *
+from heapq import nsmallest
 import uuid
-
+import csv
+from bson.objectid import ObjectId
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'zsjdfnegee#sd43afsfmni4n3432dsfnnh30djdh3h8hjej9k*'
@@ -43,7 +46,7 @@ products_schema = ProductSchema(many=True)
 class DealerSchema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ('lat','lon')
+        fields = ('dealer_name','address','lat','lon')
 
 
 dealer_schema = DealerSchema()
@@ -73,7 +76,10 @@ def add_customer():
 	nama = json['name']
 	jk = json['jk']
 	if (jk != "L") and (jk != "P"):
-		return jsonify("Gender must L or P")
+		return jsonify({
+			"message":"Gender must L or P",
+			"status":500
+			})
 	alamat = json['address']
 	no_telp = json['no_telp']
 	data = mongo.db.costumer.insert(
@@ -135,11 +141,12 @@ def all_customers():
 @app.route('/customerfind', methods=['GET']) 
 def customer():
 	search_customer = request.form.get('input_fbid')
-	customer = mongo.db.costumer.find_one({'fbid':search_customer})
+	customer = mongo.db.costumer.find({'fbid':search_customer})
 	if customer is None:
 		return jsonify({"message":"Data Not Found"}), 200
 	else:
-		return customer_schema.jsonify(customer), 200
+		access_token = create_access_token(identity=search_customer)
+		return jsonify(access_token=access_token),200
 
 		
 
@@ -222,7 +229,7 @@ def get_product_color():
 	if product is None:
 		return jsonify({"message": "Color Not Found"}), 200
 	else:
-		return products_schema.jsonify(product),200
+		return products_schema.jsonify( product),200
 
 
 
@@ -237,7 +244,7 @@ def get_product_color():
 
 '''  '''
 @app.route('/showcolor', methods=['GET'])
-# @jwt_required
+@jwt_required
 def product_color():
 	search_type = request.form.get('input_type')
 	product = mongo.db.product.find({'nl_key':search_type})
@@ -335,8 +342,9 @@ def add_newcolor():
 #ORDER A MOTORCYCLE 75%
 
 @app.route('/ordering', methods=['POST'])
-@jwt_required
+# @jwt_required
 def order():
+
 	id_tipe = request.form.get('id_type')
 	id_color = request.form.get('id_color')
 	id_customer = request.form.get('fbid',None)
@@ -347,8 +355,13 @@ def order():
 	if ordered is None:
 		return jsonify({'Fields Required'}), 200
 	else:
-		return jsonify({"message":"SUCCESS"}), 200
-
+		check_product = mongo.db.product.update({'_id':ObjectId(str(id_tipe)),'color.id_color':id_color},{'$inc':{'color.$.stock': -1}})
+		print(check_product)
+		return jsonify({
+						 "message":"Order Success",
+						 "status":200
+						}
+					)
 
 
 # buat Object
@@ -362,28 +375,81 @@ def distance(lat1, lon1, lat2, lon2):
     a = 0.5 - cos((lat2-lat1)*p)/2 + cos(lat1*p)*cos(lat2*p) * (1-cos((lon2-lon1)*p)) / 2
     return 12742 * asin(sqrt(a))
 
-def closest(data, v):
-    return min(data, key=lambda p: distance(v['lat'],v['lon'],p['lat'],p['lon']))
+def closest(p, v):
+    return distance(v['lat'],v['lon'],p['lat'],p['lon'])
 
 @app.route('/getlatlon', methods=['POST'])
 def gelLatLong():
 	form = request.form
 	lat = float(form['lat'])
 	lon = float(form['lon'])
+	max_distance = 0.75
 
-	tempDataList = mongo.db.dealer.find()
-
+	tempDataList = mongo.db.dealer.find({})
+	results = []
 	v = {'lat': lat, 'lon': lon}
-	return dealer_schema.jsonify(closest(tempDataList, v))
+	for document in tempDataList:
+		distance = closest(document, v)
+		if(distance <= max_distance):
+			results.append(
+				{
+					'dealer_name':document['dealer_name'],
+					'address':document['address'],
+					'lat':document['lat'],
+					'lon':document['lon'],
+					'distance': distance
+				}
+			)
+		
+	return jsonify({"locations": results})
 
 #################################################################################3
 
 
-# @app.route('/', methods=['POST'])
-# def addNew
+@app.route('/upload', methods=['POST'])
+def uploadExcel():
+    df = pd.read_csv('ProductCSV.csv',delimiter = ";", decimal=",")  # csv file which you want to import
+    records_ = df.to_dict(orient='records')
+    dict = {}
+    for rec in records_:
+        print(rec)
+        gettype = mongo.db.productd.count({'type':rec['type']})
+        if gettype > 0:
 
-
-
+         # for x in gettype:
+         #  print(x.color, flush=True)
+            print(gettype)
+            print('if')
+            mongo.db.productd.update({'type':rec['type']},{'$push':{
+					'color':
+						{
+							'id_color':uuid.uuid4(), 
+							'color_name':rec['color_name'],
+							'photo':rec['photo'],
+							'nl_key':rec['photo'],
+							'stock':rec['stock']
+						}
+					}
+				})
+        else:
+            dict['type'] = rec['type']
+            dict['_id'] = uuid.uuid4()
+            dict['nl_key'] = rec['nl_key']
+            dict['color'] = [
+            	{
+                  'id_color': uuid.uuid4(),
+                  'color_name': rec['color_name'],
+                  'photo': rec['photo'],
+                  'nl_key': rec['nl_cl'],
+                  'stock': rec['stock']
+                }
+            ]
+            dict['price']
+            print('else')
+            print(dict)
+            mongo.db.productd.insert(dict)
+    return jsonify({"status": "true"})
+	
 
 
 
@@ -399,7 +465,7 @@ def not_found(error=None):
 
 
 if __name__ == '__main__':
-	app.run(debug=True, port="5500")
+	app.run(debug=True, port="5000")
 
 
 
