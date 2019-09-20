@@ -15,6 +15,7 @@ import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'zsjdfnegee#sd43afsfmni4n3432dsfnnh30djdh3h8hjej9k*'
+# app.config["MONGO_URI"] = "mongodb://adminnawa:N4vva7ech@localhost:27017/hondadb"
 app.config["MONGO_URI"] = "mongodb://localhost:27017/hondadb"
 # app.config['JWT_TOKEN_LOCATION'] = ['query_string']
 app.config['JWT_SECRET_KEY'] = 'nndjbaskfu4k2ifapteldnsaiewreksdoertwt'
@@ -37,7 +38,7 @@ customers_schema = CustomerSchema(many=True)
 class ProductSchema(ma.Schema):
     class Meta:
         # Fields to expose
-        fields = ('type','nl_key', 'color', 'stok', 'price')
+        fields = ('_id','type','nl_key', 'color', 'stok', 'price')
 
 
 product_schema = ProductSchema()
@@ -52,19 +53,12 @@ class DealerSchema(ma.Schema):
 dealer_schema = DealerSchema()
 dealers_schema = DealerSchema(many=True)
 
-# master data produk,color,type, CRUD, import excel, validasi JK pria/wanita, nambah response return + model users , update stock, semua ID pake UUID versi 4,get produckt by UUID, JWT jangan di Params (di header),  #
-
-
-
-
 
 
 ################################################################################3
 
 
-#REGISTER CUSTOMER SUCCESS 80%
-
-''' Notes: Add Validasi gender & check fbid jika sudah terdaftar return jwt '''
+#REGISTER NEW CUSTOMER
 
 @app.route('/register', methods=['POST'])
 def add_customer():
@@ -92,15 +86,19 @@ def add_customer():
 			)
 	if data and request.method == 'POST':
 		access_token = create_access_token(identity=fb_id)
-		return jsonify(access_token=access_token),200
+		return jsonify(
+				{
+					'fbid':fb_id,
+					'access_token':access_token,
+					'status':200
+				}
+			)
 	else:
 		return jsonify({'message': 'Gagal Input'}), 200
 
 
 
 #################################################################################3
-
-
 
 
 
@@ -113,9 +111,7 @@ def protected():
 #################################################################################3
 
 
-#SHOW ALL CUSTOMER 100%
-
-''' Mengeluarkan semua data customer '''
+#SHOW ALL CUSTOMER
 
 
 @app.route('/customer')
@@ -133,25 +129,35 @@ def all_customers():
 
 #################################################################################3
 
-#SEARCH CUSTOMER ALREADY REGISTERED SUCCESS 100%
+#SEARCH CUSTOMER ALREADY REGISTERED
 
-
-''' Cari data customer '''
-
-@app.route('/customerfind', methods=['GET']) 
+@app.route('/customerfind', methods=['POST']) 
 def customer():
 	search_customer = request.form.get('input_fbid')
 	customer = mongo.db.costumer.find({'fbid':search_customer})
+	result = []
 	if customer is None:
 		return jsonify({"message":"Data Not Found"}), 200
 	else:
+		for cs in customer:
+			result.append(
+					{
+						'id':str(cs['_id']),
+						'fbid':cs['fbid'],
+						'name':cs['name'],
+						'jk':cs['jk'],
+						'no_telp':cs['no_telp'],
+						'address':cs['address']
+					}
+				)
 		access_token = create_access_token(identity=search_customer)
-		return jsonify(access_token=access_token),200
-
-		
-
-
-
+		return jsonify(
+				{
+					'result':result,
+					'access_token':access_token,
+					'status':200
+				}
+			)
 
 
 
@@ -159,15 +165,22 @@ def customer():
 
 #################################################################################3
 
-#SHOW ALL PRODUCT SUCCESS 100%
+#SHOW ALL PRODUCT
 
-
-''' Menampilkan semua product '''
 
 @app.route('/allproduct')
 def all_product():
 	products = mongo.db.product.find()
-	resp = products_schema.jsonify(products)
+	result = []
+	for produk in products:
+		result.append(
+				{
+					'id': str(produk['_id']),
+					'type': produk['type']
+				}
+			)
+	resp = jsonify({'result':result,
+					'status':200})
 	return resp
 
 
@@ -175,8 +188,7 @@ def all_product():
 
 #################################################################################3
 
-
-
+#DELETE PRODUCT
 
 
 @app.route('/deleteproduk', methods=['GET'])
@@ -192,19 +204,29 @@ def delete_product():
 
 #################################################################################3
 
-#PILIH TYPE PRODUCT SUCCESS 100%
+#CHOOSE TYPE PRODUCT
 
 
-''' Pilih product yang akan di order dengan input type '''
 @app.route('/chooseprdct', methods=['GET'])
 @jwt_required
 def get_product():
 	search = request.form.get('input_type')
 	product = mongo.db.product.find({'nl_key':search})
+	result = []
 	if product is None:
 		return jsonify({"message": "Data not found"}), 200
 	else:
-		return products_schema.jsonify(product), 200
+		for produk in product:
+			result.append(
+					{
+						'id': str(produk['_id']),
+						'type': produk['type'],
+						'color':produk['color']
+					}
+				)
+		resp = jsonify({'result':result,
+						'status':200})
+		return resp
 
 
 
@@ -216,9 +238,7 @@ def get_product():
 
 #################################################################################3
 
-# CHOOSE COLOR SUCCESS 100%
-
-''' Pilih warna setelah mendapatkan inputan type dan color yang diinginkan  '''
+# CHOOSE COLOR
 
 @app.route('/choosecolor', methods=['POST'])
 @jwt_required
@@ -229,9 +249,7 @@ def get_product_color():
 	if product is None:
 		return jsonify({"message": "Color Not Found"}), 200
 	else:
-		return products_schema.jsonify( product),200
-
-
+		return products_schema.jsonify(product),200
 
 
 
@@ -241,18 +259,24 @@ def get_product_color():
 
 # SHOW COLORS
 
-
-'''  '''
-@app.route('/showcolor', methods=['GET'])
+@app.route('/showcolor', methods=['POST'])
 @jwt_required
 def product_color():
-	search_type = request.form.get('input_type')
+	search_type = request.form['input_type']
 	product = mongo.db.product.find({'nl_key':search_type})
+	result = []
 	if product is None:
 		return jsonify({"message": "Color Not Found"}), 200
 	else:
-		return products_schema.jsonify(product),200
-
+		for produk in product:
+			result.append(
+					{
+						'id': str(produk['_id']),
+						'type': produk['type'],
+						'color': produk['color']
+					}
+				)
+		return jsonify({'result':result}),200
 
 
 
@@ -297,7 +321,7 @@ def insert_newproduct():
 #################################################################################3
 
 
-# New Color
+# INSERT NEW COLOR
 
 @app.route('/newcolor', methods=['POST'])
 def add_newcolor():
@@ -339,7 +363,7 @@ def add_newcolor():
 
 #################################################################################3
 
-#ORDER A MOTORCYCLE 75%
+#ORDER A MOTORCYCLE
 
 @app.route('/ordering', methods=['POST'])
 # @jwt_required
@@ -367,9 +391,10 @@ def order():
 # buat Object
 # [{"color_name":"Blue"},{"color_name":"Red"}]
 #################################################################################3
+# FIND THE NEAREST DEALER
 
 
-# latlon 
+
 def distance(lat1, lon1, lat2, lon2):
     p = 0.017453292519943295
     a = 0.5 - cos((lat2-lat1)*p)/2 + cos(lat1*p)*cos(lat2*p) * (1-cos((lon2-lon1)*p)) / 2
@@ -378,7 +403,7 @@ def distance(lat1, lon1, lat2, lon2):
 def closest(p, v):
     return distance(v['lat'],v['lon'],p['lat'],p['lon'])
 
-@app.route('/getlatlon', methods=['POST'])
+@app.route('/getlatlon', methods=['GET'])
 def gelLatLong():
 	form = request.form
 	lat = float(form['lat'])
@@ -393,6 +418,7 @@ def gelLatLong():
 		if(distance <= max_distance):
 			results.append(
 				{
+					'id':str(document['_id']),
 					'dealer_name':document['dealer_name'],
 					'address':document['address'],
 					'lat':document['lat'],
@@ -405,10 +431,10 @@ def gelLatLong():
 
 #################################################################################3
 
-
+# IMPORT CSV
 @app.route('/upload', methods=['POST'])
 def uploadExcel():
-    df = pd.read_csv('ProductCSV.csv',delimiter = ";", decimal=",")  # csv file which you want to import
+    df = pd.read_csv(request.files['file'],delimiter = ";", decimal=",")  # csv file which you want to import
     records_ = df.to_dict(orient='records')
     dict = {}
     for rec in records_:
@@ -433,7 +459,7 @@ def uploadExcel():
 				})
         else:
             dict['type'] = rec['type']
-            dict['_id'] = uuid.uuid4()
+            dict['_id'] = ObjectId()
             dict['nl_key'] = rec['nl_key']
             dict['color'] = [
             	{
@@ -444,7 +470,7 @@ def uploadExcel():
                   'stock': rec['stock']
                 }
             ]
-            dict['price']
+            dict['price'] = rec['price']
             print('else')
             print(dict)
             mongo.db.productd.insert(dict)
@@ -465,27 +491,6 @@ def not_found(error=None):
 
 
 if __name__ == '__main__':
-	app.run(debug=True, port="5000")
+	app.run(debug=True, port="5500")
 
 
-
-
-# NOTES :
-
-
-'''
-	Progress :
-
-
-	Import Excel		=> 25%
-	
-
-	latlong				=> 75%
-
-
-	CRUD Master			=> 65%
-
-
-	Order				=> 85%
-
-'''
