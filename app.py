@@ -439,14 +439,13 @@ def uploadExcel():
     dict = {}
     for rec in records_:
         print(rec)
-        gettype = mongo.db.productd.count({'type':rec['type']})
+        gettype = mongo.db.product.count({'type':rec['type']})
         if gettype > 0:
-
          # for x in gettype:
          #  print(x.color, flush=True)
             print(gettype)
             print('if')
-            mongo.db.productd.update({'type':rec['type']},{'$push':{
+            mongo.db.product.update({'type':rec['type']},{'$push':{
 					'color':
 						{
 							'id_color':uuid.uuid4(), 
@@ -473,7 +472,7 @@ def uploadExcel():
             dict['price'] = rec['price']
             print('else')
             print(dict)
-            mongo.db.productd.insert(dict)
+            mongo.db.product.insert(dict)
     return jsonify({"status": "true"})
 	
 
