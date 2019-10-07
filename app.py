@@ -160,16 +160,17 @@ def customer():
 @app.route('/allproduct')
 def all_product():
 	products = mongo.db.product.find()
-	result = []
-	for produk in products:
-		result.append(
-				{
-					'id': str(produk['_id']),
-					'type': produk['type']
-				}
-			)
-	resp = jsonify({'result':result,
-					'status':200})
+	# result = []
+	# for produk in products:
+	# 	result.append(
+	# 			{
+	# 				'id': str(produk['_id']),
+	# 				'type': produk['type']
+	# 			}
+	# 		)
+	# resp = jsonify({'result':result,
+	# 				'status':200})
+	resp = products_schema.jsonify(products)
 	return resp
 
 
@@ -355,7 +356,7 @@ def add_newcolor():
 #ORDER A MOTORCYCLE
 
 @app.route('/ordering', methods=['POST'])
-# @jwt_required
+@jwt_required
 def order():
 
 	id_tipe = request.form.get('id_type')
@@ -437,7 +438,7 @@ def uploadExcel():
             mongo.db.product.update({'type':rec['type']},{'$push':{
 					'color':
 						{
-							'id_color':uuid.uuid4(), 
+							'id_color':rec['id_color'], 
 							'color_name':rec['color_name'],
 							'photo':rec['photo'],
 							'nl_key':rec['nl_cl'],
@@ -451,7 +452,7 @@ def uploadExcel():
             dict['nl_key'] = rec['nl_key']
             dict['color'] = [
             	{
-                  'id_color': uuid.uuid4(),
+                  'id_color': rec['id_color'],
                   'color_name': rec['color_name'],
                   'photo': rec['photo'],
                   'nl_key': rec['nl_cl'],
@@ -479,6 +480,6 @@ def not_found(error=None):
 
 
 if __name__ == '__main__':
-	app.run(debug=True, port="5500")
+	app.run(debug=True)
 
 
