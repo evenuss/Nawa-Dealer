@@ -15,8 +15,8 @@ import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = 'zsjdfnegee#sd43afsfmni4n3432dsfnnh30djdh3h8hjej9k*'
-# app.config["MONGO_URI"] = "mongodb://adminnawa:N4vva7ech@localhost:27017/hondadb"
-app.config["MONGO_URI"] = "mongodb://localhost:27017/hondadb"
+app.config["MONGO_URI"] = "mongodb://adminnawa:N4vva7ech@localhost:27017/hondadb"
+# app.config["MONGO_URI"] = "mongodb://localhost:27017/hondadb"
 # app.config['JWT_TOKEN_LOCATION'] = ['query_string']
 app.config['JWT_SECRET_KEY'] = 'nndjbaskfu4k2ifapteldnsaiewreksdoertwt'
 
